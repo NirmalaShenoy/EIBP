@@ -45,7 +45,9 @@ int buildPayload(uint8_t *, int, int);
 void add_entry_LL(struct addr_tuple*);
 struct addr_tuple *find_entry_LL(struct in_addr *, char *tierAddr);
 bool delete_entry_LL_IP(struct in_addr);
-bool delete_entry_LL_Addr(uint8_t *);
+bool delete_entry_LL_Addr(uint8_t *,char[5]);
+//bool delete_entry_LL_Addr_updated(char*[], int, char[5], int myTier);
+bool delete_entry_LL_Addr_updated(char*[], int, char[5], int myTier, char***, int*);
 void delete_failed_LL_Addr(uint8_t* );
 void print_entries_LL();
 
@@ -56,6 +58,8 @@ struct addr_tuple* checkTableEntries(struct addr_tuple*);
 char* updateEndTierAddr(char[],char[]);
 char* findPortName(struct in_addr *);
 struct in_addr* getNetworkIP(char[]);
-void modify_LL(char *);
+void modify_LL(char *,char[5]);
+void modify_LL_updated(char[][128], int, char[5],int);
+
 struct addr_tuple* getFailedAddr();
 #endif

@@ -20,7 +20,9 @@ int endNetworkSend(char etherPort[], uint8_t *inPayload, int payloadLen) {
 	struct ifreq if_idx;
 	struct ifreq if_mac;
 	char ifName[IFNAMSIZ];
+	//printf("\nbefore segfault\n");
 	strcpy(ifName, etherPort);
+	//printf("\nafter segfault\n");
 	frame_Size = HEADER_SIZE + payloadLen;
 	
 	uint8_t frame[frame_Size]; // creating frame

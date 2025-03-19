@@ -23,8 +23,10 @@ char *returnAddr = NULL;     // tier address to return
 
 struct nodeTL {
 	char tier[20];          		// tier value
+	char port[20];
 	struct nodeTL *next;      // next node
 }*headTL;
+
 
 //port_tag : a tag (int) which can identify the port 
 //tag = 1 : Neighbor port
@@ -41,11 +43,14 @@ struct portTag{
  * method to add tier address after previous tier address, called by insertTierAddr()
  * @param inTier (char[]) - tier value
  ******************************************************************/
-void appendTierAddr(char inTier[20]) {
+void appendTierAddr(char inTier[20], char inPort[20]) {
 	struct nodeTL *temp, *right;
 	temp = (struct nodeTL *) malloc(sizeof(struct nodeTL));
 	memset(temp->tier,'\0',20);
 	strcpy(temp->tier, inTier);
+	// Tejas Addition
+	memset(temp->port,'\0',20);
+	strcpy(temp->port, inPort);
 	right = (struct nodeTL *) headTL;
 	while (right->next != NULL)
 		right = right->next;
@@ -65,21 +70,46 @@ void addTierAddr(char inTier[20]) {
 	temp = (struct nodeTL *) malloc(sizeof(struct nodeTL)); //allocate memory to temp
 	memset(temp->tier,'\0',20); //set null in the memory allocated
 	strcpy(temp->tier, inTier); //copy the tier address to temp
-	if (headTL == NULL) {   
+	memset(temp->port,'\0',20); //set null in the memory allocated
+	strcpy(temp->port, "");
+	//make change in nodeTL here
+	if (headTL == NULL) { 
+		//check  
 		headTL = temp;//if there is nothing in headTL, we set temp as headTL
 		headTL->next = NULL; //the pointer will then point to null
 	} else {
 		temp->next = headTL; //next of temp is set to headTL. we set the next pointer of temp to the head of the linked list 
+		//check
 		headTL = temp; // now the headTL is set as temp. the head of the linkedlist is set as temp.
 	}
 	//printf("\naddTierAddr: Tier Address added successfully %s\n", temp->tier);
 }
 
+void addTierAddr_updated(char inTier[20],char inPort[20]) {
+	struct nodeTL *temp; //create a new pointer temp 
+	temp = (struct nodeTL *) malloc(sizeof(struct nodeTL)); //allocate memory to temp
+	memset(temp->tier,'\0',20); //set null in the memory allocated
+	strcpy(temp->tier, inTier); //copy the tier address to temp
+	memset(temp->port,'\0',20); //set null in the memory allocated
+	strcpy(temp->port, inPort);
+	//make change in nodeTL here
+	if (headTL == NULL) { 
+		//check  
+		headTL = temp;//if there is nothing in headTL, we set temp as headTL
+		headTL->next = NULL; //the pointer will then point to null
+	} else {
+		temp->next = headTL; //next of temp is set to headTL. we set the next pointer of temp to the head of the linked list 
+		//check
+		headTL = temp; // now the headTL is set as temp. the head of the linkedlist is set as temp.
+	}
+	//printf("\naddTierAddr: Tier Address added successfully %s\n", temp->tier);
+}
 /************************************************
  * insertTierAddr()
  * method to add tier address into a list (duplicate entry-free)
  * @param inTier (char[]) - tier value
  *******************************************************/
+ /** 
 int insertTierAddr(char inTier[20]) {
    //printf("\ninsertTierAddr is called , label=%s labelLength=%d\n",inTier,(int)strlen(inTier));
 	printf("\n\n********************%s**********************", __FUNCTION__);
@@ -87,13 +117,46 @@ int insertTierAddr(char inTier[20]) {
 	temp = headTL;
 	int checkNode = findTierAddr(inTier); //found = 0 /notfound = 1
 	if (temp == NULL) { //if their is no initial tier address, we will call addTierAddress to add tier address to list
-		addTierAddr(inTier); //this fuction adds tier address ti list
+		addTierAddr(inTier); //this fuction adds tier address ti list // Tejas updated 
 		myTotalTierAddress++;//keeps track of the tier address. incremented once we add tier address to list
 	} else { //if there is initioal tier address in headTL, we call append TierAddr, which will append tier address to list
 
         printf("\nIn insertTierAddr checkNode=%d\n",checkNode);
         if (checkNode == 1) {
-            appendTierAddr(inTier);
+            appendTierAddr(inTier); // Tejas updated 
+			myTotalTierAddress++; //keeps track of the tier address. incremented once we add tier address to list
+	    }
+	}
+	return checkNode;
+} */
+
+int insertTierAddr(char inTier[20]) {
+   //printf("\ninsertTierAddr is called , label=%s labelLength=%d\n",inTier,(int)strlen(inTier));
+	printf("\n\n********************%s**********************", __FUNCTION__);
+	struct nodeTL *temp;
+	temp = headTL;
+	int checkNode = findTierAddr(inTier); //found = 0 /notfound = 1
+	if (temp == NULL) { //if their is no initial tier address, we will call addTierAddress to add tier address to list
+		addTierAddr(inTier); //this fuction adds tier address ti list // Tejas updated 
+		myTotalTierAddress++;//keeps track of the tier address. incremented once we add tier address to list
+	} 
+	return checkNode;
+}
+
+int insertTierAddr_updated(char inTier[20],char recvOnEtherPort[20]) {
+   //printf("\ninsertTierAddr is called , label=%s labelLength=%d\n",inTier,(int)strlen(inTier));
+	printf("\n\n********************%s**********************", __FUNCTION__);
+	struct nodeTL *temp;
+	temp = headTL;
+	int checkNode = findTierAddr(inTier); //found = 0 /notfound = 1
+	if (temp == NULL) { //if their is no initial tier address, we will call addTierAddress to add tier address to list
+		addTierAddr_updated(inTier,recvOnEtherPort); //this fuction adds tier address ti list // Tejas updated 
+		myTotalTierAddress++;//keeps track of the tier address. incremented once we add tier address to list
+	} else { //if there is initioal tier address in headTL, we call append TierAddr, which will append tier address to list
+
+        printf("\nIn insertTierAddr checkNode=%d\n",checkNode);
+        if (checkNode == 1) {
+            appendTierAddr(inTier,recvOnEtherPort); // Tejas updated 
 			myTotalTierAddress++; //keeps track of the tier address. incremented once we add tier address to list
 	    }
 	}
@@ -134,7 +197,8 @@ int findTierAddr(char inTier[20]) {
  * @return status (int) - method return value
  *************************************************************/
 int deleteTierAddr(char inTier[20]) {
-	printf("*****************************%s**********************to delete %s\n",__FUNCTION__, inTier);
+	//printf("*****************************%s**********************\n",__FUNCTION__);
+	
 	char tempDel[20];
 	strcpy(tempDel,inTier);
 	if (headTL == NULL) {
@@ -146,7 +210,9 @@ int deleteTierAddr(char inTier[20]) {
                 while (current != NULL) {
                         if (strcmp(inTier,current->tier)==0) {
 						     //printf("Removing %s \n", inet_ntoa(current->ip_addr));
+								printf("\nDeleting %s from my label table\n", inTier);
                                 if (headTL == current) {
+										//check
                                         headTL = headTL->next;
 										free(current);
                                         current = headTL;
@@ -156,7 +222,7 @@ int deleteTierAddr(char inTier[20]) {
                                         current = prev;
                                 }
 							//printf("I am passing deleteTierAddr : %s\n",tempDel);
-							notify_myLabels_Update(2,tempDel);
+							//notify_myLabels_Update(2,tempDel);
 							return 1;
                         }
                         prev = current;

@@ -28,7 +28,7 @@ extern int getUniqueChildIndex(char strCheck[]);
 extern void findParntLongst(char* myTierAdd,char* parentTierAdd);
 extern boolean isDestSubstringOfMyLabels(char* destLabel,char* myMatchedLabel);
 extern boolean isMyLabelSubstringOfDest(char* destLabel,char* myMatchedLabel);
-extern void printNeighbourTable();
+extern void printNeighbourTable(boolean isRemoved);
 extern int  examineNeighbourTable(char* desTierAdd,char* longstMatchingNgbr);
 extern int  examineNeighbourTable1(char* desTierAdd,char* longstMatchingNgbr, char* myLabel, int type);
 extern int CheckAllDestinationLabels(char* dest);

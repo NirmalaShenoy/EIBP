@@ -149,7 +149,7 @@ bool delete_entry_LL_IP(struct in_addr ip) {
         return hasDeletions;
 }
 
-bool delete_entry_LL_Addr(uint8_t* tier_addr){
+bool delete_entry_LL_Addr(uint8_t* tier_addr,char recvOnEtherPort[5]){
 	bool hasDeletions = false;
 	//printf("\n In DeleteEntryLL");
         if (tablehead == NULL) {
@@ -167,7 +167,7 @@ bool delete_entry_LL_Addr(uint8_t* tier_addr){
 						hasDeletions = true;
 						//publish IPLabel map delete to my children - to do - samruddhi 4/11/2022
 						printf("\nRemoving %s \n", current->tier_addr);
-						publishIPLabelMap(current->tier_addr,1);
+						publishIPLabelMap(current->tier_addr,1,recvOnEtherPort);
 						if (tablehead == current) {
 							tablehead = tablehead->next;
 							free(current);
@@ -190,6 +190,82 @@ bool delete_entry_LL_Addr(uint8_t* tier_addr){
 		//printf("\n%d",hasDeletions);
         return hasDeletions;
 }
+
+bool delete_entry_LL_Addr_updated(char* failedAddrs[], int failedCount, char recvOnEtherPort[5], int myTier, char*** deletedLabelsOut, int* deletedCountOut) {
+    if (failedCount <= 0 || tablehead == NULL) {
+        *deletedLabelsOut = NULL;
+        *deletedCountOut = 0;
+        return false;
+    }
+
+    bool hasDeletions = false;
+    char** deletedLabels = calloc(failedCount, sizeof(char*));
+    if (deletedLabels == NULL) {
+        perror("Failed to allocate memory for deleted labels");
+        *deletedLabelsOut = NULL;
+        *deletedCountOut = 0;
+        return false;
+    }
+
+    int deletedCount = 0;
+
+    // Process each failed address
+    for (int i = 0; i < failedCount; i++) {
+        char* tierAddr = failedAddrs[i];
+        struct addr_tuple* current = tablehead;
+        struct addr_tuple* prev = NULL;
+
+        while (current != NULL) {
+            if (strcmp(tierAddr, current->tier_addr) == 0) {
+                hasDeletions = true;
+                printf("\nRemoving Label: %s From Ip to Label Map\n", current->tier_addr);
+
+                if (deletedCount < failedCount) {
+                    deletedLabels[deletedCount] = strdup(current->tier_addr);  // Ensure safe copy
+                    if (deletedLabels[deletedCount] == NULL) {
+                        perror("Failed to duplicate label");
+                    } else {
+                        deletedCount++;
+                    }
+                }
+
+                // Remove the current node
+                if (tablehead == current) {
+                    tablehead = current->next;
+                    free(current);
+                    current = tablehead;  // Move to next node
+                } else {
+                    prev->next = current->next;
+                    free(current);
+                    current = prev ? prev->next : NULL;  // Ensure valid pointer
+                }
+
+                break;  // Move to the next address in the buffer
+            } else {
+                prev = current;
+                current = current->next;
+            }
+        }
+    }
+
+    // Send all deleted labels to publishIPLabelMap at once
+    if (deletedCount > 0 && myTier != 3) {
+        int match_Port = matchPort(recvOnEtherPort);
+        if (match_Port != 1) {
+            publishIPLabelMap_updated(deletedLabels, deletedCount, 1, recvOnEtherPort, false);
+        }
+    }
+
+    // Pass the deleted labels and count back to the caller
+    *deletedLabelsOut = deletedLabels;
+    *deletedCountOut = deletedCount;
+
+    return hasDeletions;
+}
+
+
+
+
 
 /***/
 void delete_failed_LL_Addr(uint8_t* tier_addr){
@@ -222,6 +298,7 @@ void delete_failed_LL_Addr(uint8_t* tier_addr){
 }
 // match the longest prefix
 /*  */
+
 void add_failed_entry_LL(struct addr_tuple *node) { 
 	
 	if (failedLL_head == NULL) {
@@ -235,6 +312,82 @@ void add_failed_entry_LL(struct addr_tuple *node) {
 		current->next = node;
 		node->next = NULL;
 	}
+}
+/** 
+void add_failed_entry_LL(struct addr_tuple** nodes, int count) {
+    if (count <= 0) {
+        return;
+    }
+
+    if (failedLL_head == NULL) {
+        // Initialize the failed list with the first node
+        failedLL_head = nodes[0];
+        struct addr_tuple* current = failedLL_head;
+
+        // Link all other nodes in the list
+        for (int i = 1; i < count; i++) {
+            current->next = nodes[i];
+            current = current->next;
+        }
+        current->next = NULL;
+    } else {
+        // Traverse to the end of the current failed list
+        struct addr_tuple* current = failedLL_head;
+        while (current->next != NULL) {
+            current = current->next;
+        }
+
+        // Link all new nodes at the end of the list
+        for (int i = 0; i < count; i++) {
+            current->next = nodes[i];
+            current = current->next;
+        }
+        current->next = NULL;
+    }
+}
+*/
+void add_failed_entry_LL_updated(struct addr_tuple* failedEntries[], int failedCount) {
+    if (failedCount <= 0) {
+        return;
+    }
+
+    struct addr_tuple* newHead = NULL; // Head of the new nodes
+    struct addr_tuple* newTail = NULL; // Tail of the new nodes
+
+    // Add failed entries to the new list
+    for (int i = 0; i < failedCount; i++) {
+        struct addr_tuple* newNode = (struct addr_tuple*)calloc(1, sizeof(struct addr_tuple));
+        if (newNode == NULL) {
+            perror("Failed to allocate memory for addr_tuple");
+            return;
+        }
+
+        // Initialize the node
+        strcpy(newNode->tier_addr, failedEntries[i]->tier_addr);
+        newNode->if_index = -1;
+        newNode->isNew = true;
+        newNode->next = NULL;
+		//printf("Adding failed entry %d: %s\n", i + 1, newNode->tier_addr);
+        // Append to the new list
+        if (newHead == NULL) {
+            newHead = newNode;
+            newTail = newNode;
+        } else {
+            newTail->next = newNode;
+            newTail = newNode;
+        }
+    }
+
+    // Merge the new list with the existing failed list
+    if (failedLL_head == NULL) {
+        failedLL_head = newHead;
+    } else {
+        struct addr_tuple* current = failedLL_head;
+        while (current->next != NULL) {
+            current = current->next;
+        }
+        current->next = newHead;
+    }
 }
 
 /**********************************************************
@@ -762,7 +915,8 @@ char* findPortName(struct in_addr *nwIP) {
 }
 //Deletes the label from the Label List(LL) and adds the label to the failedLL_head
 /*   */
-void modify_LL(char *addr){
+
+void modify_LL(char *addr,char recvOnEtherPort[5]){
 	if (tablehead == NULL) {
                 //return false;
         } else {
@@ -783,7 +937,7 @@ void modify_LL(char *addr){
 								strcpy(a->etherPortName, current->etherPortName);
 
 								add_failed_entry_LL(a);
-								delete_entry_LL_Addr(a->tier_addr);
+								delete_entry_LL_Addr(a->tier_addr,recvOnEtherPort);
                                 
                         }
 						
@@ -791,4 +945,89 @@ void modify_LL(char *addr){
                 }
         }
 }
+
+void modify_LL_updated(char labels[][128], int totalEntries, char recvOnEtherPort[5], int myTier) {
+	
+    if (tablehead == NULL) {
+        // No entries to process
+        return;
+    }
+
+    // Temporary storage for failed entries
+    struct addr_tuple** failedEntries = malloc(totalEntries * sizeof(struct addr_tuple*));
+    if (failedEntries == NULL) {
+        perror("Failed to allocate memory for failed entries");
+        return;
+    }
+    int failedCount = 0;
+
+    // Process the labels
+    for (int i = 0; i < totalEntries; i++) {
+        char* label = labels[i];
+
+        struct addr_tuple* current = tablehead;
+        while (current != NULL) {
+            if (strcmp(current->tier_addr, label) == 0) {
+                // Create a new entry for the failed list
+                struct addr_tuple* a = (struct addr_tuple*)calloc(1, sizeof(struct addr_tuple));
+                if (a == NULL) {
+                    perror("Failed to allocate memory for addr_tuple");
+					for (int j = 0; j < failedCount; j++) {
+                        free(failedEntries[j]);
+                    }
+                    free(failedEntries);
+                    return;
+                }
+
+                // Copy details from the current entry
+                strcpy(a->tier_addr, current->tier_addr);
+                a->if_index = -1;
+                a->isNew = true;
+                memcpy(&a->ip_addr, &current->ip_addr, sizeof(struct in_addr));
+                a->cidr = current->cidr;
+                strcpy(a->etherPortName, current->etherPortName);
+
+                // Store in the failed entries list
+                failedEntries[failedCount++] = a;
+
+                // Break from the loop as we found the matching entry
+                break;
+            }
+
+            current = current->next;
+        }
+    }
+
+    if (failedCount > 0) {
+        add_failed_entry_LL_updated(failedEntries, failedCount);
+
+        // Prepare and send all tier addresses to delete_entry_LL_Addr
+        char** failedAddrs = malloc(failedCount * sizeof(char*));
+        if (failedAddrs == NULL) {
+            perror("Failed to allocate memory for failed addresses");
+            for (int i = 0; i < failedCount; i++) {
+                free(failedEntries[i]);
+            }
+            free(failedEntries);
+            return;
+        }
+
+        for (int i = 0; i < failedCount; i++) {
+            failedAddrs[i] = failedEntries[i]->tier_addr;
+        }
+		char** deletedLabels;
+		int deletedCount;
+        delete_entry_LL_Addr_updated(failedAddrs, failedCount, recvOnEtherPort, myTier, &deletedLabels, &deletedCount);
+		
+        // Free allocated memory for tier addresses
+        free(failedAddrs);
+    }
+  
+    // Free memory for failed entries
+    for (int i = 0; i < failedCount; i++) {
+        free(failedEntries[i]);
+    }
+    free(failedEntries);
+}
+
 
