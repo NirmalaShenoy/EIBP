@@ -83,8 +83,8 @@ extern double d_time;
 extern struct timeval down_time; 
 // double end_conv_time; // NS - Never used ?? 
 // struct timeval process_before, process_after;
-struct addr_list* headaddr;  // NS to store IP addresses associated with labels or tier addresses
-struct addr_tuple* tablehead; // NS to understand the difference between addr_list and addrs_tuple
+extern struct addr_list* headaddr;  // NS to store IP addresses associated with labels or tier addresses
+extern struct addr_tuple* tablehead; // NS to understand the difference between addr_list and addrs_tuple
 
 char* tierAddr[20]; //this character array stores the tier address of format 1.2.3.4 etc
 char* ipAddress[16]; //this character array store the ip address of ip node
@@ -277,7 +277,7 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 	}
 	// sending my tier addresses on active interfaces
 	setInterfaces(); //interfaceList is being set by this function
-	int loopCounter1 = 1; //this for loop sends the control message as well as keeps track of the no of control messages sent
+	int loopCounter1 = 0; //this for loop sends the control message as well as keeps track of the no of control messages sent - set to 0 to start at eth0
 	for (; loopCounter1 < interfaceListSize; loopCounter1++) {
 		//ctrlSend(interfaceList[loopCounter1], ctrlPayLoadA); //ctrlSend method is used to send Ethernet frame(list of all tier addresses)
 		ctrlLabelSend( MESSAGE_TYPE_CTRL, interfaceList[loopCounter1], ctrlPayLoadA); 
@@ -303,7 +303,8 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 		//	"interfaceListSize = %d payloadSize=%d", interfaceListSize, (int)strlen(labelAssignmentPayLoad));
 		printf("\nSending NULL join request on all interfaces, interfaceListSize = %d", interfaceListSize);	
 		// Send NULL Join Message (Message Type, Tier Value) to all other nodes
-		for (int i = 1; i < interfaceListSize; i++) {
+		// start at i = 0 for eth0
+		for (int i = 0; i < interfaceListSize; i++) {
 			ctrlLabelSend(MESSAGE_TYPE_JOIN, interfaceList[i], labelAssignmentPayLoad);
 		}
 	}
@@ -329,7 +330,7 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 			if (failedEndIPs_head != NULL) { // if we have new failed IPs then Advertise.
 				printf("Noted a failed IP\n");
 				setInterfaces(); //interfaceList is being set by this function
-				int loopCounter2 = 1;
+				int loopCounter2 = 0; // set to 0 to begin with eth0
 				int port_number = 0;
 				uint8_t* mplrPayload = allocate_ustrmem(IP_MAXPACKET);
 				int mplrPayloadLen = 0;
@@ -384,7 +385,7 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 
 			// Send on multiple interface in a loop
 			setInterfaces(); //interfaceList is being set by this function
-			int loopCounter2 = 1;
+			int loopCounter2 = 0; // Set to 0 to begin at eth0
 			for (; loopCounter2 < interfaceListSize; loopCounter2++) {
 				//ctrlSend(interfaceList[loopCounter2], ctrlPayLoadB); //send control messages on all the interfaces related to that node
 				ctrlLabelSend(MESSAGE_TYPE_CTRL, interfaceList[loopCounter2], ctrlPayLoadB);
@@ -412,7 +413,7 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 				printMyLabels();
 				if (failedLL_head != NULL) { // when tier addreeses are deleted they are stored in FailedLL_head
 					actionflag = 0;
-					int loopCounter2 = 1;// dont send on eth0 hence changed it to 1
+					int loopCounter2 = 0;// send on eth0 so it is 0 - used to be 1 to skip
 					uint8_t* mplrPayload = allocate_ustrmem(IP_MAXPACKET);
 					int mplrPayloadLen = 0;
 					int port_number = 0;
@@ -461,15 +462,9 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 			unsigned int tcIP = src_addrIP.sll_ifindex;
 			if_indextoname(tcIP, recvOnEtherPortIP); //if_indextoname() function returns the name of the network interface corresponding to the interface index ifindex
 			// Fix for testbed, Ignoring messages from control interface // Interface names
-			char* ctrlInterface = "eth0";
 			char* loopbackInterface = "lo";
-			char* measInterface = "meas";
-			char* dockerInterface = "docker0";
 			// Check if the received message is from any of the specified interfaces
-			if (strcmp(recvOnEtherPortIP, ctrlInterface) == 0 ||
-				strcmp(recvOnEtherPortIP, loopbackInterface) == 0 ||
-				strcmp(recvOnEtherPortIP, measInterface) == 0 ||
-				strcmp(recvOnEtherPortIP, dockerInterface) == 0)
+			if (strcmp(recvOnEtherPortIP, loopbackInterface) == 0)
 				// Ignore messages from these interfaces
 				continue; 
 				// ipReceivedCount++;
@@ -581,78 +576,75 @@ int _get_MACTest(struct addr_tuple* myAddr) {
 				0x16 = MESSAGE_TYPE_PUBLISH_IP_ADD : sent by T1 node
 				**********************************************/
 
-				if (strcmp(recvOnEtherPort, "eth0") != 0) {
-					if (checkMSGType != MESSAGE_TYPE_CTRL) {
-						//printf("\ncheckMSGType=%d\n", checkMSGType);
-					}
-					switch (checkMSGType) {
-					case MESSAGE_TYPE_CTRL:
-						//printf("\n Received Message Type is MESSAGE_TYPE_CTRL - Hello\n");
-						hello_msg(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_DATA:
-						//printf("\n Received Message Type is MESSAGE_TYPE_DATA\n");
-						encaps_ip_msg(buffer, ethhead, recvOnEtherPort, src_addr, &n);
-						break;
-					case MESSAGE_TYPE_ENDNW:
-						//printf("\n Received Message Type is MESSAGE_TYPE_ENDNW\n");
-						ip_tier_mapping_msg(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_JOIN:
-						//printf("\n Received Message Type is MESSAGE_TYPE_JOIN\n");
-						msg_typ_join(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_LABELS_AVAILABLE:
-						//printf("\n Received Message Type is MESSAGE_TYPE_LABELS_AVAILABLE\n");
-						msg_typ_labl_available(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_LABELS_ACCEPTED:
-						//printf("\n Received Message Type is MESSAGE_TYPE_LABELS_ACCEPTED\n");
-						msg_typ_labl_accptd(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_MY_LABELS_ADD:
-						//printf("\n Received Message Type is MESSAGE_TYPE_MY_LABELS_ADD\n");
-						msg_typ_labl_add(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_MY_LABELS_DELETE:
-						//printf("\n Received Message Type is MESSAGE_TYPE_MY_LABELS_DELETE\n");
-						msg_typ_labl_delt(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_REQUEST_IP_RESOLVE:
-						//printf("\n Received Message Type is MESSAGE_TYPE_REQUEST_IP_RESOLVE\n");
-						msg_typ_rqst_ip(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_RESPONSE_IP_RESOLVE:
-						// printf("\n Received Message Type is MESSAGE_TYPE_RESPONSE_IP_RESOLVE\n");
-						msg_typ_ip_res(buffer, ethhead, recvOnEtherPort, src_addr, &n);
-						break;
-					case MESSAGE_TYPE_LABELS_LOST:
-						//printf("\n Received Message Type is MESSAGE_TYPE_LABELS_LOST\n");
-						msg_typ_labl_lst(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_PUBLISH_IP_DELETE:
-						//printf("\n Received Message Type is MESSAGE_TYPE_PUBLISH_IP_DELETE\n");
-						msg_typ_ip_delt(buffer, ethhead, recvOnEtherPort, src_addr);
-						break;
-					case MESSAGE_TYPE_PUBLISH_IP_ADD:
-						//printf("\n Received Message Type is MESSAGE_TYPE_PUBLISH_IP_ADD\n");
-						msg_typ_ip_add(buffer, ethhead, recvOnEtherPort, src_addr, &n);
-						break;
-					}
+				if (checkMSGType != MESSAGE_TYPE_CTRL) {
+					//printf("\ncheckMSGType=%d\n", checkMSGType);
+				}
+				switch (checkMSGType) {
+				case MESSAGE_TYPE_CTRL:
+					//printf("\n Received Message Type is MESSAGE_TYPE_CTRL - Hello\n");
+					hello_msg(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_DATA:
+					//printf("\n Received Message Type is MESSAGE_TYPE_DATA\n");
+					encaps_ip_msg(buffer, ethhead, recvOnEtherPort, src_addr, &n);
+					break;
+				case MESSAGE_TYPE_ENDNW:
+					//printf("\n Received Message Type is MESSAGE_TYPE_ENDNW\n");
+					ip_tier_mapping_msg(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_JOIN:
+					//printf("\n Received Message Type is MESSAGE_TYPE_JOIN\n");
+					msg_typ_join(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_LABELS_AVAILABLE:
+					//printf("\n Received Message Type is MESSAGE_TYPE_LABELS_AVAILABLE\n");
+					msg_typ_labl_available(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_LABELS_ACCEPTED:
+					//printf("\n Received Message Type is MESSAGE_TYPE_LABELS_ACCEPTED\n");
+					msg_typ_labl_accptd(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_MY_LABELS_ADD:
+					//printf("\n Received Message Type is MESSAGE_TYPE_MY_LABELS_ADD\n");
+					msg_typ_labl_add(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_MY_LABELS_DELETE:
+					//printf("\n Received Message Type is MESSAGE_TYPE_MY_LABELS_DELETE\n");
+					msg_typ_labl_delt(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_REQUEST_IP_RESOLVE:
+					//printf("\n Received Message Type is MESSAGE_TYPE_REQUEST_IP_RESOLVE\n");
+					msg_typ_rqst_ip(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_RESPONSE_IP_RESOLVE:
+					// printf("\n Received Message Type is MESSAGE_TYPE_RESPONSE_IP_RESOLVE\n");
+					msg_typ_ip_res(buffer, ethhead, recvOnEtherPort, src_addr, &n);
+					break;
+				case MESSAGE_TYPE_LABELS_LOST:
+					//printf("\n Received Message Type is MESSAGE_TYPE_LABELS_LOST\n");
+					msg_typ_labl_lst(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_PUBLISH_IP_DELETE:
+					//printf("\n Received Message Type is MESSAGE_TYPE_PUBLISH_IP_DELETE\n");
+					msg_typ_ip_delt(buffer, ethhead, recvOnEtherPort, src_addr);
+					break;
+				case MESSAGE_TYPE_PUBLISH_IP_ADD:
+					//printf("\n Received Message Type is MESSAGE_TYPE_PUBLISH_IP_ADD\n");
+					msg_typ_ip_add(buffer, ethhead, recvOnEtherPort, src_addr, &n);
+					break;
+				}
 
-					if (checkMSGType != MESSAGE_TYPE_CTRL && checkMSGType != MESSAGE_TYPE_DATA && checkMSGType != MESSAGE_TYPE_REQUEST_IP_RESOLVE &&
-						checkMSGType != MESSAGE_TYPE_RESPONSE_IP_RESOLVE) {
-						gettimeofday(&down_time, NULL);
-						//conv_time = ((double)convergence_time.tv_sec * 1000000 + (double)convergence_time.tv_usec) / 1000000;
-						d_time = ((double)down_time.tv_sec*1000000 + (double)down_time.tv_usec) / 1000000;
-						//printf("\nCURRENT_TIME:%lf\t", conv_time); // time at which the node receives a message and processes it correctly 
-						printf("\nMessage type is %d  received at %lf on port %s",checkMSGType, d_time, recvOnEtherPort);
-						printf("\tETH_SIZE:%d\n", sizeof(ethhead)*strlen(ethhead));
-						if (churn_flag == true) {
-							printf("CHURN_TRUE\n");
-						}
-						churn_flag = false;
+				if (checkMSGType != MESSAGE_TYPE_CTRL && checkMSGType != MESSAGE_TYPE_DATA && checkMSGType != MESSAGE_TYPE_REQUEST_IP_RESOLVE && checkMSGType != MESSAGE_TYPE_RESPONSE_IP_RESOLVE) {
+					gettimeofday(&down_time, NULL);
+					//conv_time = ((double)convergence_time.tv_sec * 1000000 + (double)convergence_time.tv_usec) / 1000000;
+					d_time = ((double)down_time.tv_sec*1000000 + (double)down_time.tv_usec) / 1000000;
+					//printf("\nCURRENT_TIME:%lf\t", conv_time); // time at which the node receives a message and processes it correctly 
+					printf("\nMessage type is %d  received at %lf on port %s",checkMSGType, d_time, recvOnEtherPort);
+					printf("\tETH_SIZE:%d\n", sizeof(ethhead)*strlen(ethhead));
+					if (churn_flag == true) {
+						printf("CHURN_TRUE\n");
 					}
+					churn_flag = false;
 				}
 			}
 		}
@@ -1278,7 +1270,8 @@ void getMyTierAddresses(char* tierAddr[])
 		setInterfaces();
 		printf("\nSending NULL join request to all interfaces, interfaceListSize = %d", interfaceListSize);
 		// NS - check what all interfaces the join request is sent. 
-		for (i = 1; i < interfaceListSize; i++) {
+		// i = 0 so that we start at eth0
+		for (i = 0; i < interfaceListSize; i++) {
 			ctrlLabelSend(MESSAGE_TYPE_JOIN, interfaceList[i], labelAssignmentPayLoad);
 			printf("\nInterface Name = %s", interfaceList[i]);
 		}
@@ -1467,7 +1460,7 @@ void notify_lostmychild(char port[20]) {
 int generateChildLabel(char* myEtherPort, int childTier, struct labels** labelList) {
 	printf("\n\n********************%s**********************", __FUNCTION__);
 	// printf("\n\nIn %s", __FUNCTION__);
-	//printf("\n Child port = %s", myEtherPort);
+	printf("\n Child port = %s", myEtherPort);
 	int match_Port = matchPort(myEtherPort);
 	if (match_Port == 0) {
 		tagport(myEtherPort, 2); //tag = 2 : to_child port
@@ -1527,7 +1520,7 @@ void notify_myLabels_Update(int update_action, char inTier[20]) {
 	// Send should initiate before receive  - NS ??
 	setInterfaces(); //interfaceList is being set by this function
 	if (update_action == 1) {
-		int loopCounter1 = 1;
+		int loopCounter1 = 0; // Set to 0 so that it begins at eth0
 		//this for loop sends the control message as well as keeps track of the no of control messages sent
 		for (; loopCounter1 < interfaceListSize; loopCounter1++) {
 			ctrlLabelSend(MESSAGE_TYPE_MY_LABELS_ADD, interfaceList[loopCounter1], ctrlPayLoadC); //ctrlSend method is used to send Ethernet frame
@@ -1537,7 +1530,7 @@ void notify_myLabels_Update(int update_action, char inTier[20]) {
 		}
 	}
 	else {
-		int loopCounter1 = 1;
+		int loopCounter1 = 0; // Set to 0 to begin at eth0
 		//send to a limited set of interfaces - NS
 		gettimeofday(&down_time, NULL);
 		d_time = ((double)down_time.tv_sec*1000000 + (double)down_time.tv_usec) / 1000000;
@@ -1698,7 +1691,7 @@ void deleteIPLabel(char failedEth[]) {
 		if (failedLL_head != NULL) {
 			//printf("\nin if (failedLL_head != NULL) 3600\n");
 			setInterfaces(); //interfaceList is being set by this function
-			int loopCounter2 = 1;// dont send on eth0 hence changed it to 1
+			int loopCounter2 = 0;// Send on eth0 so it is 0 - used to be 1 to skip
 			uint8_t* mplrPayload = allocate_ustrmem(IP_MAXPACKET);
 			int mplrPayloadLen = 0;
 			int port_number = 0;
@@ -1749,7 +1742,7 @@ void publishIPLabelMap(char label[], int action) {
 		memcpy(ctrlPayLoadC + cpLength, tempAddrA, localTierSizeA); // copying the tier address
 		cpLength = cpLength + localTierSizeA;
 		setInterfaces(); //interfaceList is being set by this function
-		int loopCounter1 = 1;
+		int loopCounter1 = 0; // Set to 0 to start at eth0
 		//Check which interfaces get the message 
 		for (; loopCounter1 < interfaceListSize; loopCounter1++) {
 			int match_Port = matchPort(interfaceList[loopCounter1]);
@@ -1771,7 +1764,7 @@ void publishIPLabelMap(char label[], int action) {
 		mplrPayloadLen = buildIPPublishPacket(mplrPayload, label);
 		//printf("mplrPayloadLen: %d\n",mplrPayloadLen);
 		if (mplrPayloadLen) {
-			int loopCounter2 = 1;
+			int loopCounter2 = 0; // Set to 0 to begin at eth0
 			for (; loopCounter2 < interfaceListSize; loopCounter2++) {
 				// Message  TYPE 5.
 				int port_number = matchPort(interfaceList[loopCounter2]);
@@ -1824,6 +1817,7 @@ void findParentofDestination(char DestTierLabel[], char eth_addr1[], char* paren
 
 void joinChildTierParentUIDInterface(char childLabel[], char myTierAddress[], char myEtherPort[]) {
 	//printf("\n My TierAddress = %s", myTierAddress);
+	// printf("\n myEtherPort = %s", myEtherPort);
 	//Getting the UID of the label of the current address.
 	int i = 0;
 	while (myTierAddress[i] != '.') {
@@ -2226,7 +2220,9 @@ void msg_typ_join(char buffer[2048], unsigned char* ethhead, char recvOnEtherPor
 	uint8_t tierValueRequestedNode = ethhead[15];
 	printf("\nMy Tier Value = %d ", myTierValue);
 	printf("\nTier Value of the Requested Node = %d ", tierValueRequestedNode);
-	if (myTierValue < tierValueRequestedNode && strcmp(recvOnEtherPort, "eth0") != 0) {
+
+	// This used to check for eth0
+	if (myTierValue < tierValueRequestedNode) {
 		//printf("\nMESSAGE_TYPE_JOIN request received from a node at lower tier ");
 		printf("\nInterface from which the request recvd = %s", recvOnEtherPort);
 		struct labels* labelList;
@@ -2667,7 +2663,7 @@ void msg_typ_labl_lst(char buffer[2048], unsigned char* ethhead, char recvOnEthe
 	//Samruddhi 4/6/2022 : Edit to work for sync -to do- NS ?? 
 	if (failedLL_head != NULL) {
 		setInterfaces(); //interfaceList is being set by this function
-		int loopCounter2 = 1;// dont send on eth0 hence changed it to 1
+		int loopCounter2 = 0;// This will send on eth0 since it starts at 0 - used to be 1
 		uint8_t* mplrPayload = allocate_ustrmem(IP_MAXPACKET);
 		int mplrPayloadLen = 0;
 		int port_number = 0;
@@ -2773,7 +2769,9 @@ void msg_typ_ip_add(char buffer[2048], unsigned char* ethhead, char recvOnEtherP
 		memset(headWithPayload, '\0', packetSize);
 		memcpy(headWithPayload, &buffer[14], packetSize);
 		setInterfaces();
-		int loopCounter2 = 1;
+
+
+		int loopCounter2 = 0; // Set to 0 so that it will iterate through eth0
 		for (; loopCounter2 < interfaceListSize; loopCounter2++) { // MPLR TYPE 5.
 			int port_number = matchPort(interfaceList[loopCounter2]);
 			if (port_number == 2) {

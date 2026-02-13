@@ -23,7 +23,8 @@ struct addr_tuple {
 	uint8_t cidr;
 	char etherPortName[10]; 
 	struct addr_tuple *next;
-}*headTuple;
+};
+extern struct addr_tuple *headTuple;
 
 
 struct addr_list{
@@ -31,7 +32,8 @@ struct addr_list{
 	struct in_addr ip_addr; //IP Addresses associated with that label 
 	uint8_t cidr;			//label whose IP matches for responseIP
 	struct addr_list *next;
-}*headaddr;
+};
+extern struct addr_list *headaddr;
 
 char *allocate_strmem(int);
 uint8_t *allocate_ustrmem(int);
