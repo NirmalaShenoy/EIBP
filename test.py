@@ -9,6 +9,7 @@ from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 from mininet.link import TCLink, Intf
 from subprocess import call
+import time
 
 def myNetwork():
 
@@ -88,7 +89,49 @@ def myNetwork():
 
     info( '*** Post configure switches and hosts\n')
 
+
+
+    """
+    popen must be used instead of cmd for this to work.
+    a minimum delay of 5 seconds is necessary for
+    the higher-tiered routers to send out join request,
+    so the lower-tiered routers have had time to stabilize.
+    """
+    C1_file = open('C1.txt', 'w')
+    C1_popen = C1.popen(['./EIBP', '-T', '1', '-L', '1.1', '-N', '1'], stdout=C1_file, stderr=C1_file)
+    time.sleep(10)
+
+
+    Drouter_cmd = ['./EIBP', '-T', '2', '-N', '1']
+
+    D1_file = open('D1.txt', 'w')
+    D1_popen = D1.popen(Drouter_cmd, stdout=D1_file, stderr=D1_file)
+    time.sleep(10)
+
+    D2_file = open('D2.txt', 'w')
+    D2_popen = D2.popen(Drouter_cmd, stdout=D2_file, stderr=D2_file)
+    time.sleep(10)
+
+
+
+    A1_file = open('A1.txt', 'w')
+    A1_popen = A1.popen(['./EIBP', '-T', '3', '-N', '0', '192.168.0.254', '24', 'eth2'], stdout=A1_file, stderr=A1_file)
+    time.sleep(10)
+
+    A2_file = open('A2.txt', 'w')
+    A2_popen = A2.popen(['./EIBP', '-T', '3', '-N', '0', '192.168.1.254', '24', 'eth2'], stdout=A2_file, stderr=A2_file)
+    time.sleep(10)
+
+
+
     CLI(net)
+
+    C1_popen.terminate()
+    D1_popen.terminate()
+    D2_popen.terminate()
+    A1_popen.terminate()
+    A2_popen.terminate()
+
     net.stop()
 
 if __name__ == '__main__':
