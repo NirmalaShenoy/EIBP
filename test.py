@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from mininet.net import Mininet
 from mininet.node import Controller, RemoteController, OVSController
@@ -46,39 +46,6 @@ def myNetwork():
     A1.setIP('192.168.0.254/24', intf='A1-eth2')
     A2.setIP('192.168.1.254/24', intf='A2-eth2')
 
-    C1.cmd('ip link set C1-eth0 netns C1')
-    C1.cmd('ip link set C1-eth1 netns C1')
-    C1.cmd('ip link set C1-eth0 name eth0')
-    C1.cmd('ip link set C1-eth1 name eth1')
-
-    D1.cmd('ip link set D1-eth0 netns D1')
-    D1.cmd('ip link set D1-eth1 netns D1')
-    D1.cmd('ip link set D1-eth2 netns D1')
-    D1.cmd('ip link set D1-eth0 name eth0')
-    D1.cmd('ip link set D1-eth1 name eth1')
-    D1.cmd('ip link set D1-eth2 name eth2')
-
-    D2.cmd('ip link set D2-eth0 netns D2')
-    D2.cmd('ip link set D2-eth1 netns D2')
-    D2.cmd('ip link set D2-eth2 netns D2')
-    D2.cmd('ip link set D2-eth0 name eth0')
-    D2.cmd('ip link set D2-eth1 name eth1')
-    D2.cmd('ip link set D2-eth2 name eth2')
-
-    A1.cmd('ip link set A1-eth0 netns A1')
-    A1.cmd('ip link set A1-eth1 netns A1')
-    A1.cmd('ip link set A1-eth2 netns A1')
-    A1.cmd('ip link set A1-eth0 name eth0')
-    A1.cmd('ip link set A1-eth1 name eth1')
-    A1.cmd('ip link set A1-eth2 name eth2')
-
-    A2.cmd('ip link set A2-eth0 netns A2')
-    A2.cmd('ip link set A2-eth1 netns A2')
-    A2.cmd('ip link set A2-eth2 netns A2')
-    A2.cmd('ip link set A2-eth0 name eth0')
-    A2.cmd('ip link set A2-eth1 name eth1')
-    A2.cmd('ip link set A2-eth2 name eth2')
-
     info( '*** Starting network\n')
     net.build()
     info( '*** Starting controllers\n')
@@ -115,16 +82,16 @@ def myNetwork():
 
 
     A1_file = open('A1.txt', 'w')
-    A1_popen = A1.popen(['./EIBP', '-T', '3', '-N', '0', '192.168.0.254', '24', 'eth2'], stdout=A1_file, stderr=A1_file)
+    A1_popen = A1.popen(['./EIBP', '-T', '3', '-N', '0', '192.168.0.254', '24', 'A1-eth2'], stdout=A1_file, stderr=A1_file)
     time.sleep(10)
 
     A2_file = open('A2.txt', 'w')
-    A2_popen = A2.popen(['./EIBP', '-T', '3', '-N', '0', '192.168.1.254', '24', 'eth2'], stdout=A2_file, stderr=A2_file)
+    A2_popen = A2.popen(['./EIBP', '-T', '3', '-N', '0', '192.168.1.254', '24', 'A2-eth2'], stdout=A2_file, stderr=A2_file)
     time.sleep(10)
 
 
-
     CLI(net)
+
 
     C1_popen.terminate()
     D1_popen.terminate()

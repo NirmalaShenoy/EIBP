@@ -1827,7 +1827,13 @@ void joinChildTierParentUIDInterface(char childLabel[], char myTierAddress[], ch
 	strcpy(childLabel + curLengthChildLabel, myTierAddress + i);
 	//printf("\n After appending the uid of the parent, childLabel = %s ", childLabel);
 	char temp[10] = ".";
-	strcpy(temp + 1, myEtherPort + 3);
+
+	char etherPortCopy[20];
+	strcpy(etherPortCopy, myEtherPort);
+	char *result = strtok(etherPortCopy, "-");
+	result = strtok(NULL, "-");
+	strcpy(temp + 1, result + 3);
+
 	// printf("\n temp = %s", temp);
 	curLengthChildLabel = strlen(childLabel);
 	strcpy(childLabel + curLengthChildLabel, temp);
